@@ -5,34 +5,50 @@ document.addEventListener("DOMContentLoaded", () => {
     errorMessage.style.display = "none";
   });
 });
+const API_BASE = "https://tiktok-download-api-euxl.onrender.com";
+
 async function downloadVideo(e) {
   e.preventDefault();
-  let videoId = document.querySelector("#video-id").value;
-  if (videoId) {
-    // if (videoId.startsWith("https://")) videoId = getTikTokVideoId(videoId);
-    try {
-      e.target.classList.add("loading");
-      const response = await fetch(
-        `https://tiktok-download-api-euxl.onrender.com/download?url=${videoId}`
-      );
-      const res = await response.json();
-      if (response.status === 200) {
-        const data = res?.data;
-        const videoUrl = data?.video?.play_addr.url_list[0];
-        const userId = data?.author?.unique_id;
-        const videoTitle = data?.desc;
-        await doDownloadVideo(videoUrl, `${videoTitle}@${userId}`);
-      } else {
-        showErrorMessage("Video not found");
-      }
-    } catch (error) {
-      console.error(error);
-      showErrorMessage("An error occurred while downloading the video");
-    } finally {
-      e.target.classList.remove("loading");
+  const videoId = document.querySelector("#video-id").value.trim();
+  if (!videoId) {
+    showErrorMessage("Please enter a video URL or ID");
+    return;
+  }
+  try {
+    e.target.classList.add("loading");
+
+    // step 1: get video info JSON
+    const infoRes = await fetch(
+      `${API_BASE}/get_info?url=${encodeURIComponent(videoId)}`
+    );
+    const info = await infoRes.json();
+    if (infoRes.status !== 200) {
+      showErrorMessage(info?.error || "Video not found");
+      return;
     }
-  } else {
-    showErrorMessage("Please enter a video ID");
+
+    const data = info?.data;
+    const formats = data?.formats || [];
+    const best =
+      formats.find((f) => f.resolution === "720x1280") ||
+      formats[formats.length - 1];
+
+    if (!best?.url) {
+      showErrorMessage("No downloadable format found");
+      return;
+    }
+
+    const title = data?.title || info?.aweme_id || "video";
+    const uploader = data?.uploader || "";
+    const fileName = uploader ? `${title}@${uploader}` : title;
+
+    // step 2: download via proxy as blob
+    await doDownloadVideo(best.url, fileName);
+  } catch (error) {
+    console.error(error);
+    showErrorMessage("An error occurred while downloading the video");
+  } finally {
+    e.target.classList.remove("loading");
   }
 }
 
@@ -55,14 +71,13 @@ function getTikTokVideoId(url) {
   return null; // Return null if no valid format is found
 }
 
-async function doDownloadVideo(url, fileName) {
-  // download the video with blob
-  const reponse = await fetch(url);
-  const blob = await reponse.blob();
+async function doDownloadVideo(cdnUrl, fileName) {
+  // proxy through backend to attach proper headers, then save as blob
+  const proxyUrl = `${API_BASE}/download?url=${encodeURIComponent(cdnUrl)}`;
+  const response = await fetch(proxyUrl);
+  const blob = await response.blob();
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  // link.href = url;
-  link.target = "_blank";
   link.download = fileName + ".mp4";
   link.click();
 }
