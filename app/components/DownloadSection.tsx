@@ -48,13 +48,8 @@ export default function DownloadSection() {
       }
 
       const data = info.data;
-      const formats = data?.formats || [];
-      const best =
-        formats.find((item) => item.resolution === "720x1280") ||
-        formats[formats.length - 1];
-
-      if (!best?.url) {
-        setError("No downloadable format found");
+      if (!data) {
+        setError("Video not found");
         return;
       }
 
@@ -72,11 +67,9 @@ export default function DownloadSection() {
   }
 
   async function doDownloadVideo(cdnUrl: string, fileName: string) {
-    const response = await fetch(`${API_BASE}/download`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: cdnUrl }),
-    });
+    const response = await fetch(
+      `${API_BASE}/download?url=${encodeURIComponent(cdnUrl)}`
+    );
     const blob = await response.blob();
     // audio/mp4 and audio/* → .m4a; everything else → .mp4
     const ext = blob.type.startsWith("audio/") ? "m4a" : "mp4";
