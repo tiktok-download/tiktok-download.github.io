@@ -1,2 +1,15 @@
 
+# dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# misc
 .DS_Store
+*.pem
+
+# local env files
+.env*.local
+node_modules
