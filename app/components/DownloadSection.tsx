@@ -62,7 +62,7 @@ export default function DownloadSection() {
       const uploader = data?.uploader || "";
       const fileName = uploader ? `${title}@${uploader}` : title;
 
-      await doDownloadVideo(best.url, fileName);
+      await doDownloadVideo(value, fileName);
     } catch (downloadError) {
       console.error(downloadError);
       setError("An error occurred while downloading the video");
